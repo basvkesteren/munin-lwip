@@ -1,9 +1,9 @@
 /*
- *  Munin node for lwIP-1.4.1
+ *  Munin node for lwIP-1.4.1/2.1.2
  * 
  *  muninnode.c
  *         
- *  Copyright (c) 2017 Bastiaan van Kesteren <bas@edeation.nl>
+ *  Copyright (c) 2017,2019 Bastiaan van Kesteren <bas@edeation.nl>
  *  This program comes with ABSOLUTELY NO WARRANTY; for details see the file LICENSE.
  *  This program is free software; you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Foundation; either
@@ -69,13 +69,8 @@ static void muninnode_write(muninnodectrl_t *node, char * data)
         }
     } while (result == ERR_MEM && length);
     
-    if(result == ERR_OK) {
-        #ifdef MUNINNODEDEBUG
-        dprint("muninnode_write() send %d\n\r", length);
-        #endif
-    }
     #ifdef MUNINNODEDEBUG
-    else {
+    if(result != ERR_OK) {
         dprint("muninnode_write() failed (%s)\n\r", lwip_strerr(result));
     }
     #endif
@@ -90,15 +85,16 @@ static void muninnode_close(muninnodectrl_t *node)
     dprint("muninnode_close()\n\r");
     #endif
     
-    tcp_arg(node->pcb, NULL);
-    tcp_sent(node->pcb, NULL);
-    tcp_recv(node->pcb, NULL);
-    tcp_err(node->pcb, NULL);
-    tcp_poll(node->pcb, NULL, 0);
+    if(node->pcb != NULL) {
+        tcp_arg(node->pcb, NULL);
+        tcp_sent(node->pcb, NULL);
+        tcp_recv(node->pcb, NULL);
+        tcp_err(node->pcb, NULL);
+        tcp_poll(node->pcb, NULL, 0);
+        tcp_close(node->pcb);
+    }
   
     node->state = MUNINNODE_IDLE;
-    
-    tcp_close(node->pcb);
 }
 
 static void muninnode_send(muninnodectrl_t *node, struct tcp_pcb *tpcb)
@@ -136,9 +132,12 @@ static void muninnode_send(muninnodectrl_t *node, struct tcp_pcb *tpcb)
             /* we are low on memory, try later / harder, defer to poll */
             node->buf = ptr;
         }
+        #ifdef MUNINNODEDEBUG
         else {
             /* other problem ?? */
+            dprint("muninnode_send() error %d, now what?\n\r", wr_err);)
         }
+        #endif
     }
 }
 
@@ -192,11 +191,11 @@ static err_t muninnode_poll(void *arg, struct tcp_pcb *tpcb)
 
 static void muninnode_err(void *arg, err_t err)
 /*
-  Handle connection acknowledge of sent data
+
 */
 {
     #ifdef MUNINNODEDEBUG
-    dprint("muninnode_err() arg 0x%x, err %d\n\r", arg, err);
+    dprint("muninnode_err() %d\n\r", err);
     #endif
         
     if (arg != NULL) {
@@ -283,6 +282,9 @@ static void muninnode_recv_parser(muninnodectrl_t *node)
         muninnode_close(node);
     }
     else {
+        #ifdef MUNINNODEDEBUG
+        dprint("muninnode_recv_parser() unknown\n\r");
+        #endif
         muninnode_write(node, "# unknown command. Try cap, list, nodes, config, fetch, version or quit\n");
     }
 }
@@ -302,7 +304,11 @@ static err_t muninnode_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err
                 /* Figure out what it is */
                 for(i=0;i<q->len;i++) {
                     if(((char *)q->payload)[i] == '\n') {
-                        node->pendingcmd[node->pendingcmd_ptr]  = '\0';
+                        /* End-of-command, close string, trim trailing spaces, call parser */
+                        do {
+                            node->pendingcmd[node->pendingcmd_ptr] = '\0';
+                            node->pendingcmd_ptr--;
+                        } while (node->pendingcmd[node->pendingcmd_ptr] == 0x20 && node->pendingcmd_ptr);
                         node->pendingcmd_ptr = 0;
                         muninnode_recv_parser(node);
                     }

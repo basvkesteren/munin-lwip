@@ -1,9 +1,9 @@
 /*
- *  Munin node for lwIP-1.4.1
+ *  Munin node for lwIP-1.4.1/2.1.2
  * 
  *  muninnode.h
  *         
- *  Copyright (c) 2017 Bastiaan van Kesteren <bas@edeation.nl>
+ *  Copyright (c) 2017,2019 Bastiaan van Kesteren <bas@edeation.nl>
  *  This program comes with ABSOLUTELY NO WARRANTY; for details see the file LICENSE.
  *  This program is free software; you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Foundation; either

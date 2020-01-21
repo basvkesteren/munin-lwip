@@ -1,5 +1,5 @@
 # munin-lwip
-Munin node for lwIP-1.4.1
+Munin node for lwIP-1.4.1/2.1.2
 
 ## Current status
 'works for me'; I use this in a house-metering setup, running stable for more than a year now.
