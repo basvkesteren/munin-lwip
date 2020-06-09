@@ -359,6 +359,10 @@ static err_t muninnode_accept(void *arg, struct tcp_pcb *pcb, err_t err)
   Handle incoming connections
 */
 {   
+    if(err != ERR_OK || pcb == NULL) {
+        return ERR_VAL;
+    }
+
     if(muninnode.state != MUNINNODE_IDLE) {
         #ifdef MUNINNODEDEBUG
         dprint("muninnode_accept() in use (state %d)\n\r", muninnode.state);
